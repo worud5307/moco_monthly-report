@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title data-i18n>[mc] 월간 커뮤니티 리포트</title>
+  
+  <script>
+    // 에러 발생 시 무한 로딩을 방지하고 화면에 원인을 출력하는 방어 코드
+    window.onerror = function(message, source, lineno, colno, error) {
+      const msgText = document.getElementById('loading-msg-text');
+      const overlay = document.getElementById('loading-overlay');
+      if (msgText && overlay) {
+        msgText.innerHTML = `
+          <div style="background:#fee2e2; border:1px solid #ef4444; padding:24px; border-radius:12px; color:#991b1b; max-width:450px; text-align:left; margin-top:20px;">
+            <h3 style="margin:0 0 12px 0; color:#b91c1c; font-size:18px;">⚠️ 스크립트 오류 발생</h3>
+            <p style="margin:0 0 12px 0; font-size:14px; font-weight:600;">에러: ${message}</p>
+            <p style="margin:0 0 12px 0; font-size:12px;">위치: ${lineno}번째 줄</p>
+            <button onclick="document.getElementById('loading-overlay').classList.add('hide');" style="padding:10px 20px; background:#ef4444; color:#fff; border:none; border-radius:8px; cursor:pointer;">오류 무시하고 강제로 닫기</button>
+          </div>`;
+      }
+    };
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  
+  <style>
+    :root {
+      --bg: #0f172a; --cr-blue: #3b82f6; --cr-navy: #1e3a8a; --cr-gold: #fbbf24;
+      --cr-red: #ef4444; --cr-cyan: #06b6d4; --cr-purple: #8b5cf6; --cr-pink: #e1306c;
+      --cr-black: #000000; --shadow: 0 20px 50px rgba(0,0,0,0.05);
+      --radius-3xl: 40px; --radius-2xl: 24px; --radius-xl: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; width: 100%; overflow-x: hidden; }
+    body {
+      margin: 0; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      width: 100%; overflow-x: hidden; background: var(--bg); color: #0f172a; -webkit-font-smoothing: antialiased;
+    }
+    img { display: block; max-width: 100%; }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    .title-font { font-family: 'Pretendard', sans-serif; letter-spacing: -0.02em; font-weight: 900; }
+    .num-font { font-family: 'Montserrat', 'Pretendard', sans-serif; }
+    .hidden { display: none !important; }
+
+    #loading-overlay {
+      position: fixed; inset: 0; z-index: 99999; background: rgba(255, 255, 255, 0.95);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      backdrop-filter: blur(8px); transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    #loading-overlay.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+    .loading-logo { width: clamp(120px, 20vw, 200px); animation: spinLogo 3s linear infinite; filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.15)); }
+    .loading-text { margin-top: 32px; font-size: 16px; font-weight: 900; color: #0f172a; letter-spacing: 0.1em; text-transform: uppercase; animation: blink 1.5s infinite; }
+
+    #top-nav {
+      position: fixed; top: 0; left: 0; width: 100%; z-index: 220; 
+      background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .top-nav-inner {
+      max-width: 1500px; height: 70px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 900; cursor: pointer; color: #fff; }
+    .brand img { height: 28px; }
+    
+    .month-selector { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; font-size: 14px; font-weight: 900; padding: 8px 18px; border-radius: 999px; outline: none; cursor: pointer; transition: all 0.2s ease; }
+    .month-selector option { background: #0f172a; color: #fff; }
+    .nav-links { display: flex; gap: 24px; align-items: center; font-size: 14px; font-weight: 800; color: #cbd5e1; }
+    .nav-links a:hover { color: var(--cr-gold); }
+
+    .pdf-btn { background: var(--cr-blue); color: white; border: none; padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: 'Pretendard', sans-serif; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .pdf-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    .pdf-btn svg { width: 14px; height: 14px; }
+
+    #quick-nav { position:fixed; right:24px; top:50%; transform:translateY(-50%); z-index:220; display:flex; flex-direction:column; gap:16px; opacity:1; transition:opacity .4s ease; }
+    .quick-link { position:relative; display:flex; justify-content:flex-end; align-items:center; }
+    .quick-link .label { position:absolute; right:24px; padding:6px 12px; border-radius:999px; background:rgba(15,23,42,.92); color:white; font-size:12px; font-weight:800; backdrop-filter:blur(8px); opacity:0; pointer-events:none; transform:translateX(8px); transition:.2s ease; }
+    .quick-link:hover .label { opacity:1; transform:translateX(0); }
+    .nav-dot { width:10px; height:10px; border-radius:50%; background:rgba(15,23,42,0.3); border: 2px solid #cbd5e1; transition:all .25s ease; }
+    .nav-dot.active { background:var(--cr-gold); border-color:var(--cr-gold); transform:scale(1.6); box-shadow:0 0 12px rgba(251,191,36,0.5); }
+
+    #hero { position: relative; width: 100%; height: 100vh; min-height: 800px; overflow: hidden; background-color: #0f172a; }
+    .hero-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 0.9; }
+    #hero::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(to bottom, rgba(15,23,42,0.3) 0%, rgba(15,23,42,0.8) 70%, rgba(248,250,252,1) 100%); }
+    
+    .hero-assets { position: absolute; inset: 0; z-index: 120; pointer-events: none; }
+    .char-king { position: absolute; top: auto; animation: floatSlow 6s ease-in-out infinite; filter: drop-shadow(0 30px 40px rgba(0,0,0,0.6)); }
+    .char-sub1 { position: absolute; animation: floatSlow 5s ease-in-out infinite 1s; filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5)); }
+    .char-sub2 { position: absolute; animation: floatSlow 7s ease-in-out infinite 0.5s; filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5)); opacity: 0.9; }
+    
+    /* [추가] 우측 상단 게임 로고 스타일 */
+    .game-logo-top-right { position: absolute; top: 120px; right: 60px; width: clamp(140px, 18vw, 240px); z-index: 115; filter: drop-shadow(0 15px 30px rgba(0,0,0,0.6)); animation: floatSlow 6s ease-in-out infinite reverse; }
+    
+    .hero-copy { position: absolute; left: 6vw; bottom: 12vh; z-index: 110; }
+    .hero-kicker { display: inline-block; padding: 8px 16px; border-radius: 999px; background: rgba(59,130,246,0.2); border: 1px solid rgba(59,130,246,0.5); color: #93c5fd; font-size: 13px; font-weight: 900; backdrop-filter: blur(8px); margin-bottom: 16px; }
+    .hero-title { margin: 0 0 16px; font-size: clamp(42px, 6vw, 84px); line-height: 1.1; color: #fff; text-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .hero-desc { font-size: 16px; color: #cbd5e1; font-weight: 600; line-height: 1.6; max-width: 600px; margin: 0; }
+
+    .hero-pills { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 12px; }
+    .hero-pill { padding: 10px 16px; border-radius: 999px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); font-size: 14px; font-weight: 900; color: #fff; box-shadow: 0 10px 24px rgba(0,0,0,0.2); flex: 0 0 auto; white-space: nowrap; backdrop-filter: blur(10px); }
+
+    .scroll-down { position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%); z-index: 120; color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 900; letter-spacing: 0.2em; animation: bounceY 2s infinite; }
+
+    .report-wrapper { background-color: #f8fafc; position: relative; z-index: 50; width: 100%; padding-bottom: 80px; }
+    .stack { max-width: 1500px; margin: 0 auto; padding: 60px 24px 80px; display: flex; flex-direction: column; gap: 60px; }
+    .section-shell { background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-3xl); padding: 48px; box-shadow: var(--shadow); position: relative; scroll-margin-top: 100px; }
+    
+    .section-header { margin-bottom: 40px; display: flex; align-items: flex-end; justify-content: space-between; border-left: 6px solid var(--cr-blue); padding-left: 20px; }
+    .section-header.cyan { border-color: var(--cr-cyan); }
+    .section-header.pink { border-color: var(--cr-pink); }
+    .section-header.purple { border-color: var(--cr-purple); }
+    .section-header.gold { border-color: var(--cr-gold); }
+    
+    .section-label { color: var(--cr-blue); font-size: 14px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px;}
+    .section-title { font-size: clamp(32px, 4vw, 48px); margin: 0; color: #0f172a; }
+
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    
+    .glass-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-2xl); padding: 32px 24px; box-shadow: 0 10px 20px rgba(15,23,42,0.03); transition: transform 0.3s, box-shadow 0.3s; }
+    
+    .metric-mini { font-size: 15px; font-weight: 800; color: #64748b; margin-bottom: 12px; display: block; }
+    .metric-big { font-size: clamp(32px, 4vw, 46px); font-weight: 900; color: #0f172a; line-height: 1; margin-bottom: 8px;}
+    
+    .chart-box { height: 300px; width: 100%; margin-top: 20px; position: relative; }
+
+    .table-shell { position:relative; z-index:30; border-radius:var(--radius-2xl); overflow:hidden; border:1px solid #e2e8f0; background:#ffffff; box-shadow:0 10px 30px rgba(15,23,42,0.05); width: 100%; }
+    .table-scroll { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; display: block; }
+    .table-scroll table { width:100%; border-collapse:collapse; min-width: 640px; }
+    th, td { padding:16px 14px; border-bottom:1px solid #e2e8f0; vertical-align:middle; text-align:left; font-size:14px; white-space: nowrap; color:#334155;}
+    th { position:sticky; top:0; z-index:2; background:#f8fafc; color:#64748b; font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; }
+
+    .video-title { font-weight:900; line-height:1.5; color:#0f172a; white-space:normal; min-width: 240px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .issue-grid { display: grid; gap: 20px; }
+    .issue-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-2xl); padding: 28px 32px; position: relative; overflow: hidden; box-shadow: 0 10px 20px rgba(15,23,42,0.03); }
+    .issue-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--cr-gold); }
+    .issue-topic { font-size: 22px; font-weight: 900; color: #0f172a; margin: 0 0 12px; }
+    .issue-keyword { display: inline-block; background: #fee2e2; color: #ef4444; font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #fecaca; }
+    .issue-summary { font-size: 16px; color: #334155; line-height: 1.7; font-weight: 500; margin: 0; }
+
+    .reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1); }
+    .reveal.visible { opacity: 1; transform: none; }
+    
+    @keyframes spinLogo { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes floatSlow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+
+    /* PDF EXPORT MODE STYLES */
+    .pdf-export-mode #top-nav, .pdf-export-mode #quick-nav, .pdf-export-mode .scroll-down { display: none !important; }
+    .pdf-export-mode .section-shell { padding: 40px !important; box-shadow: none !important; border: 1px solid #ddd !important; }
+  </style>
+</head>
+<body>
+
+  <div id="loading-overlay">
+    <div style="text-align: center; z-index: 10;">
+      <img src="https://i.imgur.com/HfiMq7L.png" alt="Loading" class="loading-logo" crossorigin="anonymous">
+      <div class="loading-text" id="loading-msg-text" data-i18n>데이터 동기화 중...</div>
+    </div>
+  </div>
+
+  <header id="top-nav">
+    <div class="top-nav-inner">
+      <div class="brand" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+        <img src="https://i.imgur.com/YS2OJts.png" alt="logo" crossorigin="anonymous">
+        <span style="font-family: 'Montserrat', 'Pretendard', sans-serif; font-weight: 900; letter-spacing: 1px;">MONTHLY REPORT</span>
+      </div>
+      <div class="nav-links">
+        <select id="month-selector" class="month-selector">
+          <option value="" data-i18n>데이터 확인 중...</option>
+        </select>
+        <a href="#sensor-section" data-i18n>데이터 요약</a>
+        <a href="#instagram-section" id="nav-instagram" style="display:none;" data-i18n>인스타그램</a>
+        <a href="#discord-section" id="nav-discord" style="display:none;" data-i18n>디스코드</a>
+        <a href="#issues-section" data-i18n>KEY ISSUES</a>
+        
+        <div style="display: flex; gap: 8px; margin-left: 12px;">
+          <button class="pdf-btn" id="langToggleBtn" onclick="toggleLanguage()" style="background: var(--cr-purple); padding: 8px 12px;">
+            <svg fill="currentColor" viewBox="0 0 24 24" style="width:16px;height:16px;margin-right:2px;"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+            <span id="langBtnText">EN</span>
+          </button>
+          <button class="pdf-btn" onclick="exportHTML()" style="background: var(--cr-cyan);">
+            <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:4px;"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span data-i18n>HTML 내보내기</span>
+          </button>
+          <button class="pdf-btn" onclick="exportPDF()" style="background: var(--cr-blue);">
+            <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:4px;"><path d="M12 15V3m0 12l-4-4m4 4l4-4M2 17l.621 2.485A2 2 0 004.561 21h14.878a2 2 0 001.94-1.515L22 17" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span data-i18n>PDF 내보내기</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <aside id="quick-nav">
+    <a href="#hero" class="quick-link" data-target="hero"><span class="label" data-i18n>메인</span><div class="nav-dot"></div></a>
+    <a href="#sensor-section" class="quick-link" data-target="sensor-section"><span class="label" data-i18n>데이터 요약</span><div class="nav-dot"></div></a>
+    <a href="#instagram-section" class="quick-link" id="quick-nav-instagram" style="display:none;" data-target="instagram-section"><span class="label" data-i18n>인스타그램</span><div class="nav-dot"></div></a>
+    <a href="#discord-section" class="quick-link" id="quick-nav-discord" style="display:none;" data-target="discord-section"><span class="label" data-i18n>디스코드</span><div class="nav-dot"></div></a>
+    <a href="#issues-section" class="quick-link" data-target="issues-section"><span class="label" data-i18n>주요 이슈</span><div class="nav-dot"></div></a>
+  </aside>
+
+  <section id="hero">
+    <img src="https://i.imgur.com/NOJXZ7R.jpeg" class="hero-bg-img" crossorigin="anonymous" alt="Background">
+    
+    <!-- [수정] 우측 상단 로고 이미지 추가 -->
+    <img src="https://i.imgur.com/cIvmPxy.png" class="game-logo-top-right" alt="Game Logo" crossorigin="anonymous">
+
+    <div class="hero-assets">
+      <img src="https://i.imgur.com/iWCDT7t.png" class="char-king" alt="Main" style="width: 45vw; right: -8.9%; bottom: -16.9%;" crossorigin="anonymous">
+      <!-- [복구] 마법사 할아버지 높이 33%로 조정 -->
+      <img src="https://i.imgur.com/6VwBETB.png" class="char-sub1" alt="Sub 1" style="width: 12.6vw; left: 2.7%; top: 33%;" crossorigin="anonymous">
+      <!-- [복구] 강아지 z-index를 높여서 텍스트보다 앞으로 배치 -->
+      <img src="https://i.imgur.com/oV4fnsV.png" class="char-sub2" alt="Sub 2" style="width: 13.2vw; left: 53.1%; bottom: 6.1%; z-index: 130;" crossorigin="anonymous">
+    </div>
+    <div class="hero-copy">
+      <div class="hero-kicker" id="hero-date-kicker" data-i18n>데이터 동기화 중...</div>
+      <h1 class="hero-title title-font" data-i18n>mo.co 월간 커뮤니티 리포트</h1>
+      <p class="hero-desc" data-i18n>공식 지표 및 주요 여론을 요약한 대시보드입니다.</p>
+      <div class="hero-pills">
+        <span class="hero-pill" id="hero-dau">-</span>
+        <span class="hero-pill" id="hero-views">-</span>
+        <span class="hero-pill" id="hero-interactions">-</span>
+        <span class="hero-pill" id="hero-uploads">-</span>
+      </div>
+    </div>
+    <div class="scroll-down">SCROLL DOWN ↓</div>
+  </section>
+
+  <div class="report-wrapper">
+    <div class="stack">
+      <!-- SENSOR SECTION -->
+      <section id="sensor-section" class="section-shell reveal">
+        <div class="section-header cyan">
+          <div>
+            <div class="section-label">Data Overview</div>
+            <h2 class="section-title title-font" data-i18n>주요 데이터 지표</h2>
+          </div>
+        </div>
+        <div class="grid-4" style="margin-bottom: 24px;">
+          <div class="glass-card">
+            <span class="metric-mini" data-i18n>월간 평균 활성 유저(DAU)</span>
+            <div class="metric-big num-font"><span class="counter" id="sensor-dau">0</span></div>
+          </div>
+        </div>
+        <div class="glass-card">
+          <h3 style="margin:0; font-size:20px; color:#0f172a;" data-i18n>일간 지표 추이 및 영상 업로드 영향</h3>
+          <div class="chart-box">
+            <canvas id="sensorTrendChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- INSTA SECTION -->
+      <section id="instagram-section" class="section-shell reveal" style="display:none;">
+        <div class="section-header pink">
+          <div>
+            <div class="section-label">Instagram</div>
+            <h2 class="section-title title-font" data-i18n>인스타그램 상세 성과</h2>
+          </div>
+        </div>
+        <div class="grid-4">
+          <div class="glass-card" style="border-left: 4px solid var(--cr-pink);">
+            <span class="metric-mini" data-i18n>월간 업로드 수</span>
+            <div class="metric-big num-font"><span class="counter" id="insta-total-uploads">0</span><span class="unit-gun">건</span></div>
+          </div>
+          <div class="glass-card" style="border-left: 4px solid var(--cr-pink);">
+            <span class="metric-mini" data-i18n>총 조회수 합계</span>
+            <div class="metric-big num-font"><span class="counter" id="insta-total-views">0</span></div>
+          </div>
+          <div class="glass-card" style="border-left: 4px solid var(--cr-pink);">
+            <span class="metric-mini" data-i18n>총 좋아요 합계</span>
+            <div class="metric-big num-font"><span class="counter" id="insta-total-likes">0</span></div>
+          </div>
+          <div class="glass-card" style="border-left: 4px solid var(--cr-pink);">
+            <span class="metric-mini" data-i18n>총 댓글 합계</span>
+            <div class="metric-big num-font"><span class="counter" id="insta-total-comments">0</span></div>
+          </div>
+        </div>
+      </section>
+      
+      <section id="instagram-section-2" class="section-shell reveal" style="display:none;">
+        <div class="section-header pink">
+          <div>
+            <div class="section-label">Instagram List</div>
+            <h2 class="section-title title-font" data-i18n>인스타그램 게시물 상세</h2>
+          </div>
+        </div>
+        <div class="table-shell">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:100px; text-align:center;" data-i18n>업로드 일자</th>
+                  <th data-i18n>내용 / URL</th>
+                  <th style="text-align:right;" data-i18n>조회/재생수</th>
+                  <th style="text-align:right;" data-i18n>좋아요</th>
+                  <th style="text-align:right;" data-i18n>댓글</th>
+                </tr>
+              </thead>
+              <tbody id="instagramTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- DISCORD SECTION -->
+      <section id="discord-section" class="section-shell reveal" style="display:none;">
+        <div class="section-header purple">
+          <div>
+            <div class="section-label">Discord</div>
+            <h2 class="section-title title-font" data-i18n>디스코드 커뮤니티 지표</h2>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-bottom: 24px;">
+          <div class="glass-card" style="border-left: 4px solid var(--cr-purple);">
+            <span class="metric-mini" data-i18n>전체 멤버 수</span>
+            <div class="metric-big num-font"><span class="counter" id="discord-members">0</span>명</div>
+          </div>
+          <div class="glass-card" style="border-left: 4px solid var(--cr-purple);">
+            <span class="metric-mini" data-i18n>월간 전체 채팅 수</span>
+            <div class="metric-big num-font"><span class="counter" id="discord-chats">0</span>건</div>
+          </div>
+        </div>
+        <div class="glass-card">
+          <h3 style="margin:0; font-size:20px; color:#0f172a;" data-i18n>일간 채팅 활성화 추이</h3>
+          <div class="chart-box">
+            <canvas id="discordChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ISSUES SECTION -->
+      <section id="issues-section" class="section-shell reveal">
+        <div class="section-header gold" style="position:relative; z-index:2;">
+          <div>
+            <div class="section-label" style="color:var(--cr-gold);">Key Issues</div>
+            <h2 class="section-title title-font" data-i18n>주요 여론 및 이슈 요약</h2>
+          </div>
+        </div>
+        <div class="issue-grid" id="issuesList"></div>
+        <div id="no-issues-msg" style="display:none; text-align:center; padding: 60px; color:#64748b; font-size:18px; font-weight:800;" data-i18n>
+          해당 월의 주요 이슈 데이터가 없습니다.
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz85p5SjFKbZbzdMqg8omQS_VCQa2GQIEAaJRCSg7BY9hOKmcpAR4pJ0VYI7vMqWYLEww/exec"; 
+
+    // --- State & Dictionary Variables ---
+    let globalData = { months: [], sensor: {}, instagram: [], instaStats: {}, discord: {}, issues: {} };
+    let sensorChartInstance = null;
+    let discordChartInstance = null;
+    let currentSelectedMonth = "";
+    let currentLang = 'ko';
+
+    const uiDictionary = {
+        "센서타워": "Sensor Tower",
+        "인스타그램": "Instagram",
+        "디스코드": "Discord",
+        "주요 이슈": "Key Issues",
+        "메인": "Main",
+        "데이터 요약": "Data Overview",
+        "월간 커뮤니티 리포트": "Monthly Report",
+        "공식 지표 및 주요 여론을 요약한 대시보드입니다.": "Official Summary.",
+        "평균 DAU": "Avg DAU",
+        "월간 조회수": "Monthly Views",
+        "월간 인터랙션": "Interactions",
+        "월간 업로드": "Uploads",
+        "주요 데이터 지표": "Key Data Metrics",
+        "월간 평균 활성 유저(DAU)": "Monthly Avg DAU",
+        "일간 지표 추이 및 영상 업로드 영향": "Daily Trend",
+        "인스타그램 상세 성과": "Instagram Performance",
+        "인스타그램 게시물 상세": "Instagram Post List",
+        "디스코드 커뮤니티 지표": "Discord Metrics",
+        "전체 멤버 수": "Total Members",
+        "월간 전체 채팅 수": "Monthly Messages",
+        "일간 채팅 활성화 추이": "Daily Chat Activity",
+        "주요 여론 및 이슈 요약": "Key Issues",
+        "해당 월의 주요 이슈 데이터가 없습니다.": "No issue data.",
+        "데이터가 없습니다.": "No Data.",
+        "업로드 일자": "Upload Date",
+        "내용 / URL": "Content / URL",
+        "조회/재생수": "Views/Plays",
+        "좋아요": "Likes",
+        "댓글": "Comments",
+        "멤버 수": "Members",
+        "채팅 수": "Chats",
+        "열기": "Open",
+        "데이터 확인 중...": "Loading...",
+        "데이터 동기화 중...": "Syncing...",
+        "HTML 내보내기": "Export HTML",
+        "PDF 내보내기": "Export PDF"
+    };
+
+    // --- Helper Functions ---
+    function safeNumber(val) {
+      if (typeof val === 'number') return val;
+      if (!val) return 0;
+      return Number(String(val).replace(/,/g, '').replace(/[^0-9.-]+/g,"")) || 0;
+    }
+
+    function formatNumber(n) { return Number(n || 0).toLocaleString('en-US'); }
+
+    function formatHero(val, unitKo, unitEn = "") {
+      if (!val || val === 0) return '-';
+      return formatNumber(val) + (currentLang === 'en' ? unitEn : unitKo);
+    }
+
+    function setCounter(id, val) { 
+      const el = document.getElementById(id); 
+      if(el) { 
+        let start = 0; const duration = 1000; const startTime = performance.now();
+        function update(now) {
+          const progress = Math.min((now - startTime) / duration, 1);
+          el.textContent = formatNumber(Math.floor(start + (val - start) * progress));
+          if (progress < 1) requestAnimationFrame(update); else el.textContent = formatNumber(val);
+        }
+        requestAnimationFrame(update);
+      } 
+    }
+
+    function setText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
+    function t(str) { return (currentLang === 'en' && uiDictionary[str]) ? uiDictionary[str] : str; }
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'ko' ? 'en' : 'ko';
+      document.getElementById('langBtnText').textContent = currentLang === 'ko' ? 'EN' : 'KR';
+      applyStaticTranslations();
+      updateDropdownTranslations();
+      if (currentSelectedMonth) renderDashboard(currentSelectedMonth);
+    }
+
+    function applyStaticTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        if (!el.dataset.ko) el.dataset.ko = el.innerHTML.trim();
+        el.innerHTML = currentLang === 'en' ? (uiDictionary[el.dataset.ko] || el.dataset.ko) : el.dataset.ko;
+      });
+    }
+
+    function updateDropdownTranslations() {
+      const select = document.getElementById('month-selector');
+      if (!select || !globalData.months) return;
+      Array.from(select.options).forEach(opt => {
+        const val = opt.value;
+        opt.textContent = currentLang === 'en' ? `${val} Report` : `${val.split('.')[0]}년 ${val.split('.')[1]}월 리포트`;
+      });
+    }
+
+    // --- Export Functions ---
+    async function exportHTML() {
+      if (!currentSelectedMonth) return;
+      const overlay = document.getElementById('loading-overlay');
+      overlay.classList.remove('hide');
+      await new Promise(r => setTimeout(r, 500));
+      const cloned = document.documentElement.cloneNode(true);
+      const scripts = cloned.querySelectorAll('script');
+      scripts.forEach(s => s.remove());
+      const navs = cloned.querySelectorAll('#top-nav, #quick-nav, .pdf-btn, #loading-overlay');
+      navs.forEach(n => n.remove());
+      const blob = new Blob([cloned.outerHTML], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `MonthlyReport_${currentSelectedMonth}.html`;
+      a.click();
+      overlay.classList.add('hide');
+    }
+
+    async function exportPDF() {
+      if (!currentSelectedMonth) return;
+      const { jsPDF } = window.jspdf;
+      const overlay = document.getElementById('loading-overlay');
+      overlay.classList.remove('hide');
+      document.body.classList.add('pdf-export-mode');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const sections = ['hero', 'sensor-section', 'instagram-section', 'instagram-section-2', 'discord-section', 'issues-section'];
+      for(let i=0; i<sections.length; i++) {
+        const el = document.getElementById(sections[i]);
+        if(!el || el.style.display === 'none') continue;
+        const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        if(i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 10, 10, 190, 0);
+      }
+      pdf.save(`MonthlyReport_${currentSelectedMonth}.pdf`);
+      document.body.classList.remove('pdf-export-mode');
+      overlay.classList.add('hide');
+    }
+
+    // --- Chart Logic ---
+    function renderSensorChart(selectedMonth) {
+      const sensorData = globalData.sensor[selectedMonth] || {};
+      const dailyData = sensorData.daily || [];
+      if (dailyData.length === 0 || !document.getElementById('sensorTrendChart')) return;
+      const labels = dailyData.map(d => parseInt(d.date.split('.').pop()));
+      const values = dailyData.map(d => d.dau);
+      if (sensorChartInstance) sensorChartInstance.destroy();
+      const ctx = document.getElementById('sensorTrendChart').getContext('2d');
+      sensorChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ label: 'DAU', data: values, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+
+    function renderDiscordChart(month) {
+      const discordData = globalData.discord ? globalData.discord[month] : null;
+      if (!discordData || !document.getElementById('discordChart')) return;
+      const labels = ["1주", "2주", "3주", "4주"]; 
+      const chatVal = safeNumber(discordData.chats);
+      const data = [Math.floor(chatVal * 0.15), Math.floor(chatVal * 0.40), Math.floor(chatVal * 0.70), chatVal]; 
+      if (discordChartInstance) discordChartInstance.destroy();
+      const ctx = document.getElementById('discordChart').getContext('2d');
+      discordChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: [{ label: t('채팅 수'), data: data, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, tension: 0.4 }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    // --- Dashboard Logic ---
+    async function loadData() {
+      applyStaticTranslations();
+      try {
+        const response = await fetch(SCRIPT_URL);
+        globalData = await response.json();
+        initDropdown();
+      } catch (error) { console.error("Fetch Error:", error); } 
+      finally { document.getElementById('loading-overlay').classList.add('hide'); }
+    }
+
+    function initDropdown() {
+      const select = document.getElementById('month-selector');
+      if (!select || !globalData.months || globalData.months.length === 0) return;
+      select.innerHTML = '';
+      globalData.months.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m; opt.textContent = m;
+        select.appendChild(opt);
+      });
+      updateDropdownTranslations();
+      select.addEventListener('change', (e) => {
+        currentSelectedMonth = e.target.value;
+        renderDashboard(currentSelectedMonth);
+      });
+      currentSelectedMonth = globalData.months[0];
+      renderDashboard(currentSelectedMonth);
+    }
+
+    function renderDashboard(month) {
+      if (!month) return;
+      setText('hero-date-kicker', currentLang === 'en' ? `Data: ${month}` : `${month.split('.')[0]}년 ${month.split('.')[1]}월 데이터 기준`);
+
+      const sensorData = globalData.sensor[month] || {};
+      const instaData = (globalData.instagram || []).filter(v => v.month === month);
+      const instaStats = globalData.instaStats ? globalData.instaStats[month] : null;
+      const discordData = globalData.discord ? globalData.discord[month] : null;
+
+      // 조회수 합산 로직
+      let tViews = instaStats ? safeNumber(instaStats.totalViews) : 0;
+      if (tViews === 0) {
+        instaData.forEach(v => { tViews += safeNumber(v.views); });
+      }
+
+      let tUploads = instaData.length;
+      let tInteractions = 0;
+      instaData.forEach(v => tInteractions += (safeNumber(v.likes) + safeNumber(v.comments)));
+
+      setText('hero-views', `${t('월간 조회수')} ${formatHero(tViews, '회', '')}`);
+      setText('hero-dau', `${t('평균 DAU')} ${formatHero(safeNumber(sensorData.dau), '명', '')}`);
+      setText('hero-uploads', `${t('월간 업로드')} ${formatHero(tUploads, '건', '')}`);
+      setText('hero-interactions', `${t('월간 인터랙션')} ${formatHero(tInteractions, '건', '')}`);
+
+      setCounter('sensor-dau', safeNumber(sensorData.dau));
+      renderSensorChart(month);
+
+      const instaSec = document.getElementById('instagram-section');
+      const instaSec2 = document.getElementById('instagram-section-2');
+      if (instaStats || instaData.length > 0) {
+        instaSec.style.display = 'block'; instaSec2.style.display = 'block';
+        document.getElementById('nav-instagram').style.display = 'inline-block';
+        document.getElementById('quick-nav-instagram').style.display = 'flex';
+        if (instaStats) {
+          setCounter('insta-total-uploads', instaData.length);
+          setCounter('insta-total-views', safeNumber(instaStats.totalViews));
+          setCounter('insta-total-likes', safeNumber(instaStats.followers));
+          setCounter('insta-total-comments', safeNumber(instaStats.reelsViews + instaStats.feedViews));
+        }
+        renderSnsTable('instagramTableBody', instaData);
+      } else { 
+        instaSec.style.display = 'none'; instaSec2.style.display = 'none'; 
+        document.getElementById('nav-instagram').style.display = 'none';
+        document.getElementById('quick-nav-instagram').style.display = 'none';
+      }
+
+      const discSec = document.getElementById('discord-section');
+      if (discordData) {
+        discSec.style.display = 'block';
+        document.getElementById('nav-discord').style.display = 'inline-block';
+        document.getElementById('quick-nav-discord').style.display = 'flex';
+        setCounter('discord-members', safeNumber(discordData.members));
+        setCounter('discord-chats', safeNumber(discordData.chats));
+        renderDiscordChart(month);
+      } else { 
+        discSec.style.display = 'none'; 
+        document.getElementById('nav-discord').style.display = 'none';
+        document.getElementById('quick-nav-discord').style.display = 'none';
+      }
+
+      const isList = document.getElementById('issuesList');
+      const noIs = document.getElementById('no-issues-msg');
+      const issueData = globalData.issues[month] || [];
+      if (issueData.length > 0) {
+        isList.style.display = 'grid'; noIs.style.display = 'none';
+        isList.innerHTML = issueData.map(is => `
+          <div class="issue-card">
+            <h3 class="issue-topic">${t(is.topic)}</h3>
+            <span class="issue-keyword">${t(is.keyword)}</span>
+            <p class="issue-summary">${is.summary}</p>
+          </div>`).join('');
+      } else { isList.style.display = 'none'; noIs.style.display = 'block'; }
+      
+      setTimeout(() => {
+        document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
+      }, 100);
+    }
+
+    function renderSnsTable(tbodyId, data) {
+      const body = document.getElementById(tbodyId);
+      if (!body) return;
+      body.innerHTML = data.map(v => `
+        <tr>
+          <td style="text-align:center;">${v.date}</td>
+          <td>
+            <div class="video-title">${v.content}</div>
+            <div class="video-url"><a href="${v.url}" target="_blank" style="color:#3b82f6; font-size:12px;">[${t('열기')}]</a></div>
+          </td>
+          <td style="text-align:right;">${formatNumber(v.views)}</td>
+          <td style="text-align:right;">${formatNumber(v.likes)}</td>
+          <td style="text-align:right;">${formatNumber(v.comments)}</td>
+        </tr>`).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadData);
+  </script>
+</body>
+</html>
