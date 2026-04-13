@@ -269,7 +269,7 @@
         <div class="grid-4">
           <div class="glass-card" style="border-left: 4px solid var(--cr-pink);">
             <span class="metric-mini" data-i18n>월간 업로드 수</span>
-            <div class="metric-big num-font"><span class="counter" id="insta-total-uploads">0</span><span class="unit-gun">건</span></div>
+            <div class="metric-big num-font"><span class="counter" id="insta-total-uploads">0</span><span id="unit-insta-uploads">건</span></div>
           </div>
           <div class="glass-card" style="border-left: 4px solid var(--cr-pink);">
             <span class="metric-mini" data-i18n>총 조회수 합계</span>
@@ -322,11 +322,11 @@
         <div class="grid-2" style="margin-bottom: 24px;">
           <div class="glass-card" style="border-left: 4px solid var(--cr-purple);">
             <span class="metric-mini" data-i18n>전체 멤버 수</span>
-            <div class="metric-big num-font"><span class="counter" id="discord-members">0</span>명</div>
+            <div class="metric-big num-font"><span class="counter" id="discord-members">0</span><span id="unit-discord-members">명</span></div>
           </div>
           <div class="glass-card" style="border-left: 4px solid var(--cr-purple);">
             <span class="metric-mini" data-i18n>월간 전체 채팅 수</span>
-            <div class="metric-big num-font"><span class="counter" id="discord-chats">0</span>건</div>
+            <div class="metric-big num-font"><span class="counter" id="discord-chats">0</span><span id="unit-discord-chats">건</span></div>
           </div>
         </div>
         <div class="glass-card">
@@ -520,7 +520,9 @@
     function renderDiscordChart(month) {
       const discordData = globalData.discord ? globalData.discord[month] : null;
       if (!discordData || !document.getElementById('discordChart')) return;
-      const labels = ["1주", "2주", "3주", "4주"]; 
+      const labels = currentLang === 'en'
+      ? ["Week 1", "Week 2", "Week 3", "Week 4"]
+      : ["1주", "2주", "3주", "4주"]; 
       const chatVal = safeNumber(discordData.chats);
       const data = [Math.floor(chatVal * 0.15), Math.floor(chatVal * 0.40), Math.floor(chatVal * 0.70), chatVal]; 
       if (discordChartInstance) discordChartInstance.destroy();
@@ -563,6 +565,17 @@
 
     function renderDashboard(month) {
       if (!month) return;
+
+	// ✅ 단위 언어 전환
+	const unitPerson = currentLang === 'en' ? '' : '명';
+	const unitCount  = currentLang === 'en' ? '' : '건';
+	const el_um = document.getElementById('unit-discord-members');
+	const el_uc = document.getElementById('unit-discord-chats');
+	const el_ui = document.getElementById('unit-insta-uploads');
+	if (el_um) el_um.textContent = unitPerson;
+	if (el_uc) el_uc.textContent = unitCount;
+	if (el_ui) el_ui.textContent = unitCount;
+
       setText('hero-date-kicker', currentLang === 'en' ? `Data: ${month}` : `${month.split('.')[0]}년 ${month.split('.')[1]}월 데이터 기준`);
 
       const sensorData = globalData.sensor[month] || {};
