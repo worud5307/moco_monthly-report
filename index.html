@@ -354,7 +354,7 @@
   </div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz85p5SjFKbZbzdMqg8omQS_VCQa2GQIEAaJRCSg7BY9hOKmcpAR4pJ0VYI7vMqWYLEww/exec"; 
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWMm8JPRU0MsPFdGznfnVPe1p5qfnIAuDr9SlJHBTmMGM9LA1Ic392UsR9u_3N1_OayQ/exec"; 
 
     // --- State & Dictionary Variables ---
     let globalData = { months: [], sensor: {}, instagram: [], instaStats: {}, discord: {}, issues: {} };
@@ -364,43 +364,47 @@
     let currentLang = 'ko';
 
     const uiDictionary = {
-        "센서타워": "Sensor Tower",
-        "인스타그램": "Instagram",
-        "디스코드": "Discord",
-        "주요 이슈": "Key Issues",
-        "메인": "Main",
-        "데이터 요약": "Data Overview",
-        "월간 커뮤니티 리포트": "Monthly Report",
-        "공식 지표 및 주요 여론을 요약한 대시보드입니다.": "Official Summary.",
-        "평균 DAU": "Avg DAU",
-        "월간 조회수": "Monthly Views",
-        "월간 인터랙션": "Interactions",
-        "월간 업로드": "Uploads",
-        "주요 데이터 지표": "Key Data Metrics",
-        "월간 평균 활성 유저(DAU)": "Monthly Avg DAU",
-        "일간 지표 추이 및 영상 업로드 영향": "Daily Trend",
-        "인스타그램 상세 성과": "Instagram Performance",
-        "인스타그램 게시물 상세": "Instagram Post List",
-        "디스코드 커뮤니티 지표": "Discord Metrics",
-        "전체 멤버 수": "Total Members",
-        "월간 전체 채팅 수": "Monthly Messages",
-        "일간 채팅 활성화 추이": "Daily Chat Activity",
-        "주요 여론 및 이슈 요약": "Key Issues",
-        "해당 월의 주요 이슈 데이터가 없습니다.": "No issue data.",
-        "데이터가 없습니다.": "No Data.",
-        "업로드 일자": "Upload Date",
-        "내용 / URL": "Content / URL",
-        "조회/재생수": "Views/Plays",
-        "좋아요": "Likes",
-        "댓글": "Comments",
-        "멤버 수": "Members",
-        "채팅 수": "Chats",
-        "열기": "Open",
-        "데이터 확인 중...": "Loading...",
-        "데이터 동기화 중...": "Syncing...",
-        "HTML 내보내기": "Export HTML",
-        "PDF 내보내기": "Export PDF"
-    };
+    "센서타워": "Sensor Tower",
+    "인스타그램": "Instagram",
+    "디스코드": "Discord",
+    "주요 이슈": "Key Issues",
+    "메인": "Main",
+    "데이터 요약": "Data Overview",
+    "mo.co 월간 커뮤니티 리포트": "mo.co Monthly Report",   // ✅ 추가
+    "공식 지표 및 주요 여론을 요약한 대시보드입니다.": "A dashboard summarizing official metrics and key community sentiment.",  // ✅ 수정
+    "평균 DAU": "Avg DAU",
+    "월간 조회수": "Monthly Views",
+    "월간 인터랙션": "Interactions",
+    "월간 업로드": "Uploads",
+    "주요 데이터 지표": "Key Data Metrics",
+    "월간 평균 활성 유저(DAU)": "Monthly Avg DAU",
+    "일간 지표 추이 및 영상 업로드 영향": "Daily Trend",
+    "인스타그램 상세 성과": "Instagram Performance",
+    "인스타그램 게시물 상세": "Instagram Post List",
+    "월간 업로드 수": "Monthly Uploads",       // ✅ 추가
+    "총 조회수 합계": "Total Views",            // ✅ 추가
+    "총 좋아요 합계": "Total Likes",            // ✅ 추가
+    "총 댓글 합계": "Total Comments",          // ✅ 추가
+    "디스코드 커뮤니티 지표": "Discord Metrics",
+    "전체 멤버 수": "Total Members",
+    "월간 전체 채팅 수": "Monthly Messages",
+    "일간 채팅 활성화 추이": "Daily Chat Activity",
+    "주요 여론 및 이슈 요약": "Key Issues Summary",
+    "해당 월의 주요 이슈 데이터가 없습니다.": "No issue data for this month.",
+    "데이터가 없습니다.": "No Data.",
+    "업로드 일자": "Upload Date",
+    "내용 / URL": "Content / URL",
+    "조회/재생수": "Views/Plays",
+    "좋아요": "Likes",
+    "댓글": "Comments",
+    "멤버 수": "Members",
+    "채팅 수": "Chats",
+    "열기": "Open",
+    "데이터 확인 중...": "Loading...",
+    "데이터 동기화 중...": "Syncing...",
+    "HTML 내보내기": "Export HTML",
+    "PDF 내보내기": "Export PDF"
+   };
 
     // --- Helper Functions ---
     function safeNumber(val) {
@@ -623,11 +627,11 @@
       if (issueData.length > 0) {
         isList.style.display = 'grid'; noIs.style.display = 'none';
         isList.innerHTML = issueData.map(is => `
-          <div class="issue-card">
-            <h3 class="issue-topic">${t(is.topic)}</h3>
-            <span class="issue-keyword">${t(is.keyword)}</span>
-            <p class="issue-summary">${is.summary}</p>
-          </div>`).join('');
+  	<div class="issue-card">
+   	 <h3 class="issue-topic">${currentLang === 'en' && is.topicEn ? is.topicEn : is.topic}</h3>
+   	 <span class="issue-keyword">${currentLang === 'en' && is.keywordEn ? is.keywordEn : is.keyword}</span>
+  	  <p class="issue-summary">${currentLang === 'en' && is.summaryEn ? is.summaryEn : is.summary}</p>
+	  </div>`).join('');
       } else { isList.style.display = 'none'; noIs.style.display = 'block'; }
       
       setTimeout(() => {
