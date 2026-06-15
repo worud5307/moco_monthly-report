@@ -503,20 +503,80 @@
 
     // --- Chart Logic ---
     function renderSensorChart(selectedMonth) {
-      const sensorData = globalData.sensor[selectedMonth] || {};
-      const dailyData = sensorData.daily || [];
-      if (dailyData.length === 0 || !document.getElementById('sensorTrendChart')) return;
-      const labels = dailyData.map(d => parseInt(d.date.split('.').pop()));
-      const values = dailyData.map(d => d.dau);
-      if (sensorChartInstance) sensorChartInstance.destroy();
-      const ctx = document.getElementById('sensorTrendChart').getContext('2d');
-      sensorChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: labels, datasets: [{ label: 'DAU', data: values, backgroundColor: '#3b82f6', borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-      });
-    }
+  const sensorData = globalData.sensor[selectedMonth] || {};
+  const dailyData = sensorData.daily || [];
+  if (dailyData.length === 0 || !document.getElementById('sensorTrendChart')) return;
 
+  // 유튜브/인스타 업로드 날짜 맵 만들기
+  const uploadMap = {};
+  (globalData.videos || []).forEach(v => {
+    if (v.month === selectedMonth) {
+      const day = parseInt(v.date.split('.').pop());
+      if (!uploadMap[day]) uploadMap[day] = { youtube: [], instagram: [] };
+      uploadMap[day].youtube.push(v.title);
+    }
+  });
+  (globalData.instagram || []).forEach(p => {
+    if (p.month === selectedMonth) {
+      const day = parseInt(p.date.split('.').pop());
+      if (!uploadMap[day]) uploadMap[day] = { youtube: [], instagram: [] };
+      uploadMap[day].instagram.push(p.content || p.type);
+    }
+  });
+
+  const labels = dailyData.map(d => parseInt(d.date.split('.').pop()));
+  const values = dailyData.map(d => d.dau);
+  const memos  = dailyData.map(d => d.memo || '');
+
+  // 업로드 있는 날 바 색상 강조
+  const barColors = labels.map(day => uploadMap[day] ? '#f59e0b' : '#3b82f6');
+
+  if (sensorChartInstance) sensorChartInstance.destroy();
+  const ctx = document.getElementById('sensorTrendChart').getContext('2d');
+  sensorChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'DAU',
+        data: values,
+        backgroundColor: barColors,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const day = items[0].label;
+              const dateStr = selectedMonth.replace('.', '년 ') + '월 ' + day + '일';
+              return dateStr;
+            },
+            label: (item) => {
+              return `DAU: ${item.raw.toLocaleString()}`;
+            },
+            afterLabel: (item) => {
+              const day = item.label;
+              const lines = [];
+              const memo = memos[item.dataIndex];
+              if (memo) lines.push(`📌 ${memo}`);
+              const uploads = uploadMap[parseInt(day)];
+              if (uploads) {
+                uploads.youtube.forEach(title => lines.push(`🎬 ${title}`));
+                uploads.instagram.forEach(content => lines.push(`📸 ${content}`));
+              }
+              return lines;
+            }
+          }
+        }
+      }
+    }
+  });
+}
     function renderDiscordChart(month) {
       const discordData = globalData.discord ? globalData.discord[month] : null;
       if (!discordData || !document.getElementById('discordChart')) return;
