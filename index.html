@@ -176,10 +176,10 @@
         <select id="month-selector" class="month-selector">
           <option value="" data-i18n>데이터 확인 중...</option>
         </select>
-        <a href="#sensor-section" data-i18n>데이터 요약</a>
-        <a href="#instagram-section" id="nav-instagram" style="display:none;" data-i18n>인스타그램</a>
-        <a href="#discord-section" id="nav-discord" style="display:none;" data-i18n>디스코드</a>
-        <a href="#issues-section" data-i18n>KEY ISSUES</a>
+			<a href="#sensor-section" data-i18n>데이터 요약</a>
+			<a href="#issues-section" data-i18n>KEY ISSUES</a>
+			<a href="#instagram-section" id="nav-instagram" style="display:none;" data-i18n>인스타그램</a>
+			<a href="#discord-section" id="nav-discord" style="display:none;" data-i18n>디스코드</a>
         
         <div style="display: flex; gap: 8px; margin-left: 12px;">
           <button class="pdf-btn" id="langToggleBtn" onclick="toggleLanguage()" style="background: var(--cr-purple); padding: 8px 12px;">
@@ -202,9 +202,10 @@
   <aside id="quick-nav">
     <a href="#hero" class="quick-link" data-target="hero"><span class="label" data-i18n>메인</span><div class="nav-dot"></div></a>
     <a href="#sensor-section" class="quick-link" data-target="sensor-section"><span class="label" data-i18n>데이터 요약</span><div class="nav-dot"></div></a>
-    <a href="#instagram-section" class="quick-link" id="quick-nav-instagram" style="display:none;" data-target="instagram-section"><span class="label" data-i18n>인스타그램</span><div class="nav-dot"></div></a>
-    <a href="#discord-section" class="quick-link" id="quick-nav-discord" style="display:none;" data-target="discord-section"><span class="label" data-i18n>디스코드</span><div class="nav-dot"></div></a>
-    <a href="#issues-section" class="quick-link" data-target="issues-section"><span class="label" data-i18n>주요 이슈</span><div class="nav-dot"></div></a>
+	<a href="#issues-section" class="quick-link" data-target="issues-section"><span class="label" data-i18n>주요 이슈</span><div class="nav-dot"></div></a>
+	<a href="#instagram-section" class="quick-link" id="quick-nav-instagram" style="display:none;" data-target="instagram-section"><span class="label" data-i18n>인스타그램</span><div class="nav-dot"></div></a>
+	<a href="#discord-section" class="quick-link" id="quick-nav-discord" style="display:none;" data-target="discord-section"><span class="label" data-i18n>디스코드</span><div class="nav-dot"></div></a>
+
   </aside>
 
   <section id="hero">
@@ -258,6 +259,20 @@
         </div>
       </section>
 
+	<!-- ISSUES SECTION -->
+      <section id="issues-section" class="section-shell reveal">
+        <div class="section-header gold" style="position:relative; z-index:2;">
+          <div>
+            <div class="section-label" style="color:var(--cr-gold);">Key Issues</div>
+            <h2 class="section-title title-font" data-i18n>주요 여론 및 이슈 요약</h2>
+          </div>
+        </div>
+        <div class="issue-grid" id="issuesList"></div>
+        <div id="no-issues-msg" style="display:none; text-align:center; padding: 60px; color:#64748b; font-size:18px; font-weight:800;" data-i18n>
+          해당 월의 주요 이슈 데이터가 없습니다.
+        </div>
+      </section>
+		
       <!-- INSTA SECTION -->
       <section id="instagram-section" class="section-shell reveal" style="display:none;">
         <div class="section-header pink">
@@ -334,20 +349,6 @@
           <div class="chart-box">
             <canvas id="discordChart"></canvas>
           </div>
-        </div>
-      </section>
-
-      <!-- ISSUES SECTION -->
-      <section id="issues-section" class="section-shell reveal">
-        <div class="section-header gold" style="position:relative; z-index:2;">
-          <div>
-            <div class="section-label" style="color:var(--cr-gold);">Key Issues</div>
-            <h2 class="section-title title-font" data-i18n>주요 여론 및 이슈 요약</h2>
-          </div>
-        </div>
-        <div class="issue-grid" id="issuesList"></div>
-        <div id="no-issues-msg" style="display:none; text-align:center; padding: 60px; color:#64748b; font-size:18px; font-weight:800;" data-i18n>
-          해당 월의 주요 이슈 데이터가 없습니다.
         </div>
       </section>
     </div>
