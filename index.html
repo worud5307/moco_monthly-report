@@ -671,8 +671,13 @@
         if (instaStats) {
           setCounter('insta-total-uploads', instaData.length);
           setCounter('insta-total-views', safeNumber(instaStats.totalViews));
-          setCounter('insta-total-likes', safeNumber(instaStats.followers));
-          setCounter('insta-total-comments', safeNumber(instaStats.reelsViews + instaStats.feedViews));
+          let tLikes = 0, tComments = 0;
+			instaData.forEach(v => {
+		  tLikes += safeNumber(v.likes);
+  			tComments += safeNumber(v.comments);
+		});
+setCounter('insta-total-likes', tLikes);
+setCounter('insta-total-comments', tComments);
         }
         renderSnsTable('instagramTableBody', instaData);
       } else { 
